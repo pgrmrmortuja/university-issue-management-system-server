@@ -31,7 +31,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
 
-    const userCollection = client.db("propertyDB").collection("users");
+    const userCollection = client.db("universityDB").collection("users");
 
 
     //jwt related-----------------------
