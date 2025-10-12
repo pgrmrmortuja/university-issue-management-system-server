@@ -209,7 +209,13 @@ async function run() {
 
     //issue related api------------------------------------
 
-    
+    // ✅ Get issues by user email (My Issues)
+    app.get("/issues/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await issueCollection.find(query).toArray();
+      res.send(result);
+    });
     
     // ✅ Submit new issue (Already done before)
     app.post("/issues", async (req, res) => {
