@@ -207,6 +207,20 @@ async function run() {
     });
 
 
+    //issue related api------------------------------------
+
+    
+    
+    // ✅ Submit new issue (Already done before)
+    app.post("/issues", async (req, res) => {
+      const issue = req.body;
+      const result = await issueCollection.insertOne(issue);
+      res.send(result);
+    });
+
+    
+
+
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
