@@ -32,6 +32,7 @@ async function run() {
     // await client.connect();
 
     const userCollection = client.db("universityDB").collection("users");
+    const issueCollection = client.db("universityDB").collection("issues");
 
 
     //jwt related-----------------------
