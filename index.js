@@ -215,12 +215,46 @@ async function run() {
       const result = await issueCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.get('/issue-id/:id', async (req, res) => {
+      const issue_id = req.params.id;
+      const query = { _id: new ObjectId(issue_id) };
+      const result = await issueCollection.findOne(query);
+      res.send(result);
+    })
     
     app.post("/issues", async (req, res) => {
       const issue = req.body;
       const result = await issueCollection.insertOne(issue);
       res.send(result);
     });
+
+    app.put('/update-issue/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const update = req.body;
+      const issue = {
+        $set: {
+          student_name: update.student_name,
+          student_email: update.student_email,
+          student_image: update.student_image,
+          issue_title: update.issue_title,
+          issue_category: update.issue_category,
+          issue_location: update.issue_location,
+          issue_date: update.issue_date,
+          issue_time: update.issue_time,
+          issue_details: update.issue_details,
+          verification_status: update.verification_status,
+          issue_image: update.issue_image,
+          submit_date: update.submit_date,
+        }
+
+      }
+
+      const result = await issueCollection.updateOne(filter, issue, options);
+      res.send(result);
+    })
 
     app.delete('/delete-issue/:id', async (req, res) => {
       const id = req.params.id;
