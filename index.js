@@ -119,18 +119,26 @@ async function run() {
 
     //user related api---------------------------
 
-    app.get('/users', verifyJWT, async (req, res) => {
+    app.get('/users', async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    //ToDo
-    app.get('/user-email/:email', verifyJWT, async (req, res) => {
+    // //ToDo
+    // app.get('/user-email/:email', async (req, res) => {
+    //   const email = req.params.email;
+    //   const filter = { email: email };
+    //   const result = await userCollection.find(filter).toArray();
+    //   res.send(result);
+    // })
+
+    app.get('/user-email/:email', async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
-      const result = await userCollection.find(filter).toArray();
-      res.send(result);
-    })
+      const result = await userCollection.findOne(filter);
+      res.send([result]); // Array আকারে পাঠালে তোমার frontend-এর userInfo[0] ঠিকভাবে কাজ করবে
+    });
+
 
 
     app.post('/users', async (req, res) => {
@@ -145,7 +153,7 @@ async function run() {
     });
 
 
-    app.patch('/user-role/:id', verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch('/user-role/:id', async (req, res) => {
       const id = req.params.id;
       const { role } = req.body; // Verified, Rejected, Fraud etc.
       const filter = { _id: new ObjectId(id) };
@@ -179,7 +187,7 @@ async function run() {
     });
 
 
-    app.delete("/remove-user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.delete("/remove-user/:id", async (req, res) => {
       const id = req.params.id;
       const uid = req.query.uid; // Query থেকে uid নিন
 
@@ -209,6 +217,11 @@ async function run() {
 
     //issue related api------------------------------------
 
+    app.get('/get-issues', async (req, res) => {
+      const result = await issueCollection.find().toArray();
+      res.send(result);
+    });
+
     app.get("/my-issues/:email", async (req, res) => {
       const student_email = req.params.email;
       const query = { student_email };
@@ -222,7 +235,7 @@ async function run() {
       const result = await issueCollection.findOne(query);
       res.send(result);
     })
-    
+
     app.post("/issues", async (req, res) => {
       const issue = req.body;
       const result = await issueCollection.insertOne(issue);
@@ -263,7 +276,7 @@ async function run() {
       res.send(result);
     })
 
-    
+
 
 
 
