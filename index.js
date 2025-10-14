@@ -295,7 +295,13 @@ async function run() {
 
 
     //like related api-----------------------------------
-    
+    // লাইক কাউন্ট ও ইউজারদের পাওয়া
+    app.get('/likes/:issueId', async (req, res) => {
+      const { issueId } = req.params;
+      const likes = await likeCollection.find({ issueId }).toArray();
+      const likedUsers = likes.map(like => like.userEmail);
+      res.send({ count: likes.length, likedUsers });
+    });
 
     // ইউজার লাইক করলে / আনলাইক করলে
     app.post('/likes/:issueId', async (req, res) => {
