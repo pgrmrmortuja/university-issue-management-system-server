@@ -331,6 +331,32 @@ async function run() {
     });
 
 
+    //saved related api--------------------
+    app.post('/saves/:issueId', async (req, res) => {
+      const { issueId } = req.params;
+      const { email } = req.body;
+
+      if (!email) return res.status(400).send({ message: 'User email required' });
+
+      // আগে সেভ করা আছে কিনা দেখবো
+      const existingSave = await savedCollection.findOne({ issueId, userEmail: email });
+
+      if (existingSave) {
+        // থাকলে আনসেভ (delete)
+        await savedCollection.deleteOne({ issueId, userEmail: email });
+        res.send({ message: 'Post unsaved' });
+      } else {
+        // না থাকলে সেভ
+        await savedCollection.insertOne({
+          issueId,
+          userEmail: email,
+          savedAt: new Date(),
+        });
+        res.send({ message: 'Post saved successfully' });
+      }
+    });
+
+
 
 
 
