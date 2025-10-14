@@ -33,6 +33,8 @@ async function run() {
 
     const userCollection = client.db("universityDB").collection("users");
     const issueCollection = client.db("universityDB").collection("issues");
+    const likeCollection = client.db("universityDB").collection("likes");
+    const savedCollection = client.db("universityDB").collection("saves");
 
 
     //jwt related-----------------------
@@ -269,12 +271,33 @@ async function run() {
       res.send(result);
     })
 
+    app.patch('/verification/:id', async (req, res) => {
+      const id = req.params.id;
+      const { verification_status } = req.body; // Verified or Rejected
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          verification_status: verification_status
+        }
+      }
+
+      const result = await issueCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+
+    });
+
     app.delete('/delete-issue/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await issueCollection.deleteOne(query);
       res.send(result);
     })
+
+
+    //like related api-----------------------------------
+    
+
+
 
 
 
