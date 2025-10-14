@@ -321,7 +321,7 @@ async function run() {
         await likeCollection.insertOne({
           issueId,
           userEmail: email,
-          likedAt: new Date(),
+          likedAt: new Date().toLocaleString(),
         });
       }
 
@@ -350,7 +350,7 @@ async function run() {
         await savedCollection.insertOne({
           issueId,
           userEmail: email,
-          savedAt: new Date(),
+          savedAt: new Date().toLocaleString(),
         });
         res.send({ message: 'Post saved successfully' });
       }
