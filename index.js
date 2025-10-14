@@ -297,6 +297,33 @@ async function run() {
     //like related api-----------------------------------
     
 
+    // ইউজার লাইক করলে / আনলাইক করলে
+    app.post('/likes/:issueId', async (req, res) => {
+      const { issueId } = req.params;
+      const { email } = req.body;
+
+      if (!email) return res.status(400).send({ message: 'User email required' });
+
+      // দেখবো আগেই লাইক করা আছে কিনা
+      const existingLike = await likeCollection.findOne({ issueId, userEmail: email });
+
+      if (existingLike) {
+        // থাকলে remove করবো (unlike)
+        await likeCollection.deleteOne({ issueId, userEmail: email });
+      } else {
+        // না থাকলে insert করবো
+        await likeCollection.insertOne({
+          issueId,
+          userEmail: email,
+          likedAt: new Date(),
+        });
+      }
+
+      // Updated count পাঠাবো
+      const likes = await likeCollection.find({ issueId }).toArray();
+      res.send({ count: likes.length });
+    });
+
 
 
 
