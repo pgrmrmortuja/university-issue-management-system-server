@@ -154,15 +154,75 @@ async function run() {
       res.send(result);
     });
 
+
+
+    // Express route: update user and (optionally) related issue documents when role === "User"
     app.patch('/user-update/:email', async (req, res) => {
-      const { email } = req.params;
-      const updatedData = req.body;
-      const result = await userCollection.updateOne(
-        { email },
-        { $set: updatedData },
-        { upsert: true }
-      );
-      res.send(result);
+      try {
+        const email = req.params.email;
+        const updatedData = req.body || {}; // expect { name, photoURL, universityID, department }
+
+        if (!email) {
+          return res.status(400).send({ error: 'Email param required' });
+        }
+
+        // Validate body a bit (optional but recommended)
+        // You can add more validations as needed
+        const { name, photoURL, universityID, department } = updatedData;
+
+        // 1) Update userCollection (common update)
+        const userFilter = { email: email };
+        const userUpdateDoc = {
+          $set: {
+            ...(name !== undefined && { name }),
+            ...(photoURL !== undefined && { photoURL }),
+            ...(universityID !== undefined && { universityID }),
+            ...(department !== undefined && { department }),
+          },
+        };
+
+        const userResult = await userCollection.updateOne(userFilter, userUpdateDoc);
+
+        // 2) Fetch the updated (or current) user doc to check role
+        const userDoc = await userCollection.findOne(userFilter, { projection: { role: 1 } });
+
+        // Prepare response container
+        const responsePayload = { userUpdate: userResult };
+
+        // 3) If role === "User", update issueCollection's student_name & student_image
+        if (userDoc && userDoc.role === 'User') {
+          // IMPORTANT:
+          // Adjust the issueFilter below to match how you store the user reference in your issue documents.
+          // Common options: { email }, { userEmail: email }, { student_email: email }, etc.
+          const issueFilter = { student_email: email }; // <-- CHANGE this if your schema uses a different field
+
+          const issueUpdateDoc = {
+            $set: {
+              ...(name !== undefined && { student_name: name }),
+              ...(photoURL !== undefined && { student_image: photoURL }),
+            },
+          };
+
+          // Use updateMany so all issues by that user get updated. If you only want to update one, change to updateOne.
+          const issueResult = await issueCollection.updateMany(issueFilter, issueUpdateDoc);
+
+          responsePayload.issueUpdate = issueResult;
+        }
+
+        // 4) Return results
+        return res.status(200).send({
+          success: true,
+          message: 'User updated successfully',
+          data: responsePayload,
+        });
+      } catch (error) {
+        console.error('Error in /user-update/:email ->', error);
+        return res.status(500).send({
+          success: false,
+          error: 'Server error while updating user',
+          details: error.message,
+        });
+      }
     });
 
 
