@@ -154,6 +154,17 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/user-update/:email', async (req, res) => {
+      const { email } = req.params;
+      const updatedData = req.body;
+      const result = await userCollection.updateOne(
+        { email },
+        { $set: updatedData },
+        { upsert: true }
+      );
+      res.send(result);
+    });
+
 
     app.patch('/user-role/:id', async (req, res) => {
       const id = req.params.id;
@@ -303,35 +314,100 @@ async function run() {
       res.send({ count: likes.length, likedUsers });
     });
 
-    // ইউজার লাইক করলে / আনলাইক করলে
+    // ✅ ইউজার লাইক করলে / আনলাইক করলে (Like Toggle System)
     app.post('/likes/:issueId', async (req, res) => {
-      const { issueId } = req.params;
-      const { email } = req.body;
+      try {
+        const { issueId } = req.params;
+        const { email } = req.body;
 
-      if (!email) return res.status(400).send({ message: 'User email required' });
+        if (!email) {
+          return res.status(400).send({ success: false, message: 'User email required' });
+        }
 
-      // দেখবো আগেই লাইক করা আছে কিনা
-      const existingLike = await likeCollection.findOne({ issueId, userEmail: email });
+        // আগেই লাইক করা আছে কিনা চেক
+        const existingLike = await likeCollection.findOne({ issueId, userEmail: email });
 
-      if (existingLike) {
-        // থাকলে remove করবো (unlike)
-        await likeCollection.deleteOne({ issueId, userEmail: email });
-      } else {
-        // না থাকলে insert করবো
-        await likeCollection.insertOne({
-          issueId,
-          userEmail: email,
-          likedAt: new Date().toLocaleString(),
+        let action = '';
+
+        if (existingLike) {
+          // আগে লাইক করা থাকলে — এবার unlike
+          await likeCollection.deleteOne({ issueId, userEmail: email });
+          action = 'unliked';
+        } else {
+          // আগে লাইক না থাকলে — এবার like
+          await likeCollection.insertOne({
+            issueId,
+            userEmail: email,
+            likedAt: new Date().toLocaleString(),
+          });
+          action = 'liked';
+        }
+
+        // এখন total count বের করবো
+        const totalLikes = await likeCollection.countDocuments({ issueId });
+
+        // ✅ Clear response
+        res.send({
+          success: true,
+          action, // 'liked' or 'unliked'
+          totalLikes,
         });
-      }
 
-      // Updated count পাঠাবো
-      const likes = await likeCollection.find({ issueId }).toArray();
-      res.send({ count: likes.length });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
     });
 
 
+
     //saved related api--------------------
+
+    // ✅ 1. Check if a Post is Saved by User
+    app.get("/saved/check/:issueId", async (req, res) => {
+      const { issueId } = req.params;
+      const { email } = req.query;
+
+      try {
+        const saved = await savedCollection.findOne({ issueId, userEmail: email });
+        res.status(200).json({ isSaved: !!saved });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to check saved issue" });
+      }
+    });
+
+
+    // ✅ Get All Saved Posts with Issue Data
+    app.get("/saved/:email", async (req, res) => {
+      const { email } = req.params;
+
+      try {
+        // প্রথমে সব saved documents বের করো
+        const savedDocs = await savedCollection
+          .find({ userEmail: email })
+          .sort({ savedAt: -1 })
+          .toArray();
+
+        // savedDocs থেকে issueId নিয়ে Promise.all দিয়ে issueCollection data fetch করো
+        const savedPostsWithIssue = await Promise.all(
+          savedDocs.map(async (savedDoc) => {
+            const issueData = await issueCollection.findOne({ _id: new ObjectId(savedDoc.issueId) });
+            return {
+              ...issueData,        // issueCollection data
+              savedAt: savedDoc.savedAt, // saved time
+              savedId: savedDoc._id,    // savedCollection id (optional)
+            };
+          })
+        );
+
+        res.status(200).json(savedPostsWithIssue);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch saved posts with issue data" });
+      }
+    });
+
+
     app.post('/saves/:issueId', async (req, res) => {
       const { issueId } = req.params;
       const { email } = req.body;
@@ -353,6 +429,34 @@ async function run() {
           savedAt: new Date().toLocaleString(),
         });
         res.send({ message: 'Post saved successfully' });
+      }
+    });
+
+    // ✅ Delete saved issue by _id (savedCollection ID)
+    app.delete('/delete-saved/:id', async (req, res) => {
+      const { id } = req.params;
+      const { email } = req.query; // frontend থেকে ?email=user.email পাঠাবে
+
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'User email required' });
+      }
+
+      try {
+        // ObjectId বানাও (কারণ _id MongoDB Object)
+        const query = { _id: new ObjectId(id), userEmail: email };
+        console.log("Delete Query:", query);
+
+        const result = await savedCollection.deleteOne(query);
+        console.log("Delete Result:", result);
+
+        if (result.deletedCount > 0) {
+          res.status(200).json({ success: true, message: 'Saved issue removed successfully' });
+        } else {
+          res.status(404).json({ success: false, message: 'Saved issue not found' });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
       }
     });
 
