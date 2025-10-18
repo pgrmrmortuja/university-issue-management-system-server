@@ -357,6 +357,20 @@ async function run() {
 
     });
 
+    // ✅ Solve issue (Mark as solved)
+    app.patch('/solve/:id', async (req, res) => {
+      const id = req.params.id;
+      const { isSolved } = req.body;
+
+      const result = await issueCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { isSolved: isSolved } }
+      );
+
+      res.send(result);
+    });
+
+
     app.delete('/delete-issue/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
