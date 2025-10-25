@@ -156,7 +156,6 @@ async function run() {
 
 
 
-    // Express route: update user and (optionally) related issue documents when role === "User"
     app.patch('/user-update/:email', async (req, res) => {
       try {
         const email = req.params.email;
@@ -260,7 +259,33 @@ async function run() {
     });
 
 
-    
+ 
+    app.delete("/remove-user/:id", async (req, res) => {
+      const id = req.params.id;
+
+      try {
+        const query = { _id: new ObjectId(id) };
+        const result = await userCollection.deleteOne(query);
+
+        if (result.deletedCount === 1) {
+          res.status(200).send({
+            success: true,
+            message: "User deleted successfully from MongoDB.",
+          });
+        } else {
+          res.status(404).send({
+            success: false,
+            message: "User not found in database.",
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error deleting user:", error);
+        res.status(500).send({
+          success: false,
+          message: "Internal server error while deleting user.",
+        });
+      }
+    });
 
 
     //issue related api------------------------------------
