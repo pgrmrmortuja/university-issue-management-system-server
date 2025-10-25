@@ -126,7 +126,7 @@ async function run() {
       res.send(result);
     });
 
-    // //ToDo
+    //ToDo
     // app.get('/user-email/:email', async (req, res) => {
     //   const email = req.params.email;
     //   const filter = { email: email };
@@ -244,13 +244,13 @@ async function run() {
 
         const user = await userCollection.findOne(filter);
         if (user?.email) {
-          const propertyFilter = { agent_email: user.email };
-          const deleteResult = await propertyCollection.deleteMany(propertyFilter);
-          console.log(`Deleted ${deleteResult.deletedCount} properties for Fraud agent.`);
+          const issueFilter = { email: user.email };
+          const deleteResult = await issueCollection.deleteMany(issueFilter);
+          console.log(`Deleted ${deleteResult.deletedCount} issues for Fraud agent.`);
 
           return res.send({
             modifiedCount: result.modifiedCount,
-            deletedProperties: deleteResult.deletedCount
+            deletedIssues: deleteResult.deletedCount
           });
 
         }
@@ -260,32 +260,7 @@ async function run() {
     });
 
 
-    app.delete("/remove-user/:id", async (req, res) => {
-      const id = req.params.id;
-      const uid = req.query.uid; // Query থেকে uid নিন
-
-      if (!uid) {
-        return res.status(400).json({ error: "Invalid UID" });
-      }
-
-      try {
-
-        const query = { _id: new ObjectId(id) };
-        const result = await userCollection.deleteOne(query);
-
-        if (result.deletedCount === 0) {
-          return res.status(404).json({ error: "User not found in DB!" });
-        }
-
-        await admin.auth().deleteUser(uid);
-
-        res.json({ success: true, message: "User deleted from MongoDB & Firebase!" });
-
-      } catch (error) {
-        console.error("Error deleting user:", error);
-        res.status(500).json({ error: "Failed to delete user" });
-      }
-    });
+    
 
 
     //issue related api------------------------------------
@@ -294,6 +269,13 @@ async function run() {
       const result = await issueCollection.find().toArray();
       res.send(result);
     });
+
+    app.get('/status/:verification_status', async (req, res) => {
+      const verification_status = req.params.verification_status;
+      const query = { verification_status: verification_status };
+      const result = await issueCollection.find(query).toArray();
+      res.send(result);
+    })
 
     app.get("/my-issues/:email", async (req, res) => {
       const student_email = req.params.email;
