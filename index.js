@@ -259,7 +259,7 @@ async function run() {
     });
 
 
- 
+
     app.delete("/remove-user/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -287,7 +287,6 @@ async function run() {
       }
     });
 
-
     //issue related api------------------------------------
 
     app.get('/get-issues', async (req, res) => {
@@ -307,6 +306,35 @@ async function run() {
       const query = { student_email };
       const result = await issueCollection.find(query).toArray();
       res.send(result);
+    });
+
+    // Route to get issue stats
+    app.get("/issue-stats", async (req, res) => {
+      const total = await issueCollection.countDocuments();
+
+      const verified = await issueCollection.countDocuments({
+        verification_status: "verified",
+      });
+
+      const rejected = await issueCollection.countDocuments({
+        verification_status: "rejected",
+      });
+
+      const pending = await issueCollection.countDocuments({
+        verification_status: "pending",
+      });
+
+      const solved = await issueCollection.countDocuments({
+        isSolved: true,
+      });
+
+      res.send({
+        total,
+        verified,
+        rejected,
+        pending,
+        solved,
+      });
     });
 
     app.get('/issue-id/:id', async (req, res) => {
@@ -364,7 +392,7 @@ async function run() {
 
     });
 
-    // ✅ Solve issue (Mark as solved)
+    // Solve issue (Mark as solved)
     app.patch('/solve/:id', async (req, res) => {
       const id = req.params.id;
       const { isSolved } = req.body;
@@ -387,7 +415,7 @@ async function run() {
 
 
     //like related api-----------------------------------
-    // লাইক কাউন্ট ও ইউজারদের পাওয়া
+
     app.get('/likes/:issueId', async (req, res) => {
       const { issueId } = req.params;
       const likes = await likeCollection.find({ issueId }).toArray();
@@ -395,7 +423,7 @@ async function run() {
       res.send({ count: likes.length, likedUsers });
     });
 
-    // ✅ ইউজার লাইক করলে / আনলাইক করলে (Like Toggle System)
+    //(Like Toggle System)
     app.post('/likes/:issueId', async (req, res) => {
       try {
         const { issueId } = req.params;
