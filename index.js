@@ -31,6 +31,8 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
 
+    
+
     const userCollection = client.db("universityDB").collection("users");
     const issueCollection = client.db("universityDB").collection("issues");
     const likeCollection = client.db("universityDB").collection("likes");
@@ -95,24 +97,24 @@ async function run() {
     };
 
     // User Middleware
-    const verifyUser = async (req, res, next) => {
+    const verifyStudent = async (req, res, next) => {
       const user = await userCollection.findOne({ email: req.user.email });
 
       if (user?.role !== "User") {
-        return res.status(403).json({ message: "Access Denied: Users only!" });
+        return res.status(403).json({ message: "Access Denied: Student only!" });
       }
       next();
     };
 
     //Admin or User middleware
-    const verifyAdminOrUser = async (req, res, next) => {
+    const verifyAdminOrStudent = async (req, res, next) => {
       const user = await userCollection.findOne({ email: req.user.email });
 
       if (user?.role === "Admin" || user?.role === "User") {
         return next();
       }
 
-      return res.status(403).json({ message: "Access Denied: Only Admin or User can perform this action!" });
+      return res.status(403).json({ message: "Access Denied: Only Admin or Student can perform this action!" });
     };
 
 
@@ -121,7 +123,7 @@ async function run() {
 
     //user related api---------------------------
 
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
@@ -134,11 +136,11 @@ async function run() {
     //   res.send(result);
     // })
 
-    app.get('/user-email/:email', async (req, res) => {
+    app.get('/user-email/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const result = await userCollection.findOne(filter);
-      res.send([result]); // Array আকারে পাঠালে তোমার frontend-এর userInfo[0] ঠিকভাবে কাজ করবে
+      res.send([result]); // 
     });
 
 
@@ -156,7 +158,7 @@ async function run() {
 
 
 
-    app.patch('/user-update/:email', async (req, res) => {
+    app.patch('/user-update/:email', verifyJWT, async (req, res) => {
       try {
         const email = req.params.email;
         const updatedData = req.body || {}; // expect { name, photoURL, universityID, department }
@@ -225,7 +227,7 @@ async function run() {
     });
 
 
-    app.patch('/user-role/:id', async (req, res) => {
+    app.patch('/user-role/:id', verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const { role } = req.body; // Verified, Rejected, Fraud etc.
       const filter = { _id: new ObjectId(id) };
@@ -260,7 +262,7 @@ async function run() {
 
 
 
-    app.delete("/remove-user/:id", async (req, res) => {
+    app.delete("/remove-user/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
 
       try {
@@ -289,19 +291,19 @@ async function run() {
 
     //issue related api------------------------------------
 
-    app.get('/get-issues', async (req, res) => {
+    app.get('/get-issues', verifyJWT, verifyAdminOrStudent, async (req, res) => {
       const result = await issueCollection.find().toArray();
       res.send(result);
     });
 
-    app.get('/status/:verification_status', async (req, res) => {
+    app.get('/status/:verification_status', verifyJWT, verifyAdminOrStudent, async (req, res) => {
       const verification_status = req.params.verification_status;
       const query = { verification_status: verification_status };
       const result = await issueCollection.find(query).toArray();
       res.send(result);
     })
 
-    app.get("/my-issues/:email", async (req, res) => {
+    app.get("/my-issues/:email", verifyJWT, verifyStudent, async (req, res) => {
       const student_email = req.params.email;
       const query = { student_email };
       const result = await issueCollection.find(query).toArray();
@@ -309,7 +311,7 @@ async function run() {
     });
 
     // Route to get issue stats
-    app.get("/issue-stats", async (req, res) => {
+    app.get("/issue-stats",  async (req, res) => {
       const total = await issueCollection.countDocuments();
 
       const verified = await issueCollection.countDocuments({
@@ -337,20 +339,20 @@ async function run() {
       });
     });
 
-    app.get('/issue-id/:id', async (req, res) => {
+    app.get('/issue-id/:id', verifyJWT, async (req, res) => {
       const issue_id = req.params.id;
       const query = { _id: new ObjectId(issue_id) };
       const result = await issueCollection.findOne(query);
       res.send(result);
     })
 
-    app.post("/issues", async (req, res) => {
+    app.post("/issues", verifyJWT, verifyStudent, async (req, res) => {
       const issue = req.body;
       const result = await issueCollection.insertOne(issue);
       res.send(result);
     });
 
-    app.put('/update-issue/:id', async (req, res) => {
+    app.put('/update-issue/:id', verifyJWT, verifyStudent, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) }
       const options = { upsert: true };
@@ -393,7 +395,7 @@ async function run() {
     });
 
     // Solve issue (Mark as solved)
-    app.patch('/solve/:id', async (req, res) => {
+    app.patch('/solve/:id', verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const { isSolved } = req.body;
 
@@ -406,7 +408,7 @@ async function run() {
     });
 
 
-    app.delete('/delete-issue/:id', async (req, res) => {
+    app.delete('/delete-issue/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await issueCollection.deleteOne(query);
@@ -416,7 +418,7 @@ async function run() {
 
     //like related api-----------------------------------
 
-    app.get('/likes/:issueId', async (req, res) => {
+    app.get('/likes/:issueId', verifyJWT, async (req, res) => {
       const { issueId } = req.params;
       const likes = await likeCollection.find({ issueId }).toArray();
       const likedUsers = likes.map(like => like.userEmail);
@@ -424,7 +426,7 @@ async function run() {
     });
 
     //(Like Toggle System)
-    app.post('/likes/:issueId', async (req, res) => {
+    app.post('/likes/:issueId', verifyJWT, async (req, res) => {
       try {
         const { issueId } = req.params;
         const { email } = req.body;
@@ -472,8 +474,8 @@ async function run() {
 
     //saved related api--------------------
 
-    // ✅ 1. Check if a Post is Saved by User
-    app.get("/saved/check/:issueId", async (req, res) => {
+    //Check if a Post is Saved by User
+    app.get("/saved/check/:issueId", verifyJWT, async (req, res) => {
       const { issueId } = req.params;
       const { email } = req.query;
 
@@ -486,18 +488,18 @@ async function run() {
     });
 
 
-    // ✅ Get All Saved Posts with Issue Data
-    app.get("/saved/:email", async (req, res) => {
+    //  Get All Saved Posts with Issue Data
+    app.get("/saved/:email", verifyJWT, async (req, res) => {
       const { email } = req.params;
 
       try {
-        // প্রথমে সব saved documents বের করো
+        // 
         const savedDocs = await savedCollection
           .find({ userEmail: email })
           .sort({ savedAt: -1 })
           .toArray();
 
-        // savedDocs থেকে issueId নিয়ে Promise.all দিয়ে issueCollection data fetch করো
+        // 
         const savedPostsWithIssue = await Promise.all(
           savedDocs.map(async (savedDoc) => {
             const issueData = await issueCollection.findOne({ _id: new ObjectId(savedDoc.issueId) });
@@ -517,21 +519,21 @@ async function run() {
     });
 
 
-    app.post('/saves/:issueId', async (req, res) => {
+    app.post('/saves/:issueId', verifyJWT, async (req, res) => {
       const { issueId } = req.params;
       const { email } = req.body;
 
       if (!email) return res.status(400).send({ message: 'User email required' });
 
-      // আগে সেভ করা আছে কিনা দেখবো
+      //
       const existingSave = await savedCollection.findOne({ issueId, userEmail: email });
 
       if (existingSave) {
-        // থাকলে আনসেভ (delete)
+        // 
         await savedCollection.deleteOne({ issueId, userEmail: email });
         res.send({ message: 'Post unsaved' });
       } else {
-        // না থাকলে সেভ
+        // 
         await savedCollection.insertOne({
           issueId,
           userEmail: email,
@@ -541,8 +543,8 @@ async function run() {
       }
     });
 
-    // ✅ Delete saved issue by _id (savedCollection ID)
-    app.delete('/delete-saved/:id', async (req, res) => {
+    //  Delete saved issue by _id (savedCollection ID)
+    app.delete('/delete-saved/:id', verifyJWT, async (req, res) => {
       const { id } = req.params;
       const { email } = req.query; // frontend থেকে ?email=user.email পাঠাবে
 
@@ -551,7 +553,6 @@ async function run() {
       }
 
       try {
-        // ObjectId বানাও (কারণ _id MongoDB Object)
         const query = { _id: new ObjectId(id), userEmail: email };
         console.log("Delete Query:", query);
 
